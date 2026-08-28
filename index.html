@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0d0b09">
+<title>Attrition — Average Damage per Round</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0d0b09;
+    --panel:#16120e;
+    --panel-2:#1f1813;
+    --line:#3a2e22;
+    --ink:#e9e0d2;
+    --ink-dim:#a99a85;
+    --ink-faint:#7a6c58;
+    --amber:#e0a23a;
+    --amber-soft:#caa15a;
+    --blood:#b5443a;
+    --good:#6f9b6a;
+    --display:"Cinzel", "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+    --body:-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{
+    background:
+      radial-gradient(120% 80% at 50% -10%, #1a140e 0%, var(--bg) 60%) fixed,
+      var(--bg);
+    color:var(--ink);
+    font-family:var(--body);
+    line-height:1.45;
+    -webkit-text-size-adjust:100%;
+    padding:
+      max(14px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right))
+      max(28px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left));
+  }
+  .wrap{max-width:640px;margin:0 auto}
+
+  header{padding:8px 2px 18px}
+  h1{
+    font-family:var(--display);
+    font-weight:700;
+    letter-spacing:.04em;
+    font-size:clamp(22px,6vw,30px);
+    margin:0 0 4px;
+    color:var(--ink);
+  }
+  h1 .flame{color:var(--amber)}
+  .tag{color:var(--ink-dim);font-size:13.5px;max-width:52ch}
+
+  .panel{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:12px;
+    padding:14px;
+    margin-bottom:16px;
+  }
+  .panel > h2{
+    font-family:var(--display);
+    font-weight:500;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+    font-size:13px;
+    color:var(--amber-soft);
+    margin:0 0 12px;
+    display:flex;align-items:baseline;justify-content:space-between;gap:8px;
+  }
+  .panel > h2 .hint{font-family:var(--body);text-transform:none;letter-spacing:0;color:var(--ink-faint);font-size:11.5px}
+
+  /* editable rows */
+  .row{display:grid;gap:8px;align-items:center;margin-bottom:8px}
+  .row.mon{grid-template-columns: 1fr 64px 64px 36px}
+  .row.pc{grid-template-columns: 1fr 56px 56px 36px}
+  .col-head{display:grid;gap:8px;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:2px;padding:0 2px}
+  .col-head.mon{grid-template-columns: 1fr 64px 64px 36px}
+  .col-head.pc{grid-template-columns: 1fr 56px 56px 36px}
+  .col-head span{text-align:center}
+  .col-head span:first-child{text-align:left}
+
+  input, select{
+    font-family:var(--body);
+    font-size:16px; /* prevents iOS zoom-on-focus */
+    color:var(--ink);
+    background:var(--panel-2);
+    border:1px solid var(--line);
+    border-radius:8px;
+    padding:9px 10px;
+    width:100%;
+    min-height:42px;
+    -webkit-appearance:none;
+    appearance:none;
+  }
+  input[type=number]{text-align:center;font-variant-numeric:tabular-nums}
+  input::placeholder{color:var(--ink-faint)}
+  input:focus,select:focus,button:focus-visible{
+    outline:2px solid var(--amber);
+    outline-offset:1px;
+    border-color:var(--amber);
+  }
+
+  .del{
+    background:transparent;border:1px solid var(--line);color:var(--ink-faint);
+    border-radius:8px;min-height:42px;font-size:18px;line-height:1;cursor:pointer;
+  }
+  .del:hover{color:var(--blood);border-color:var(--blood)}
+
+  .add{
+    width:100%;margin-top:4px;
+    background:var(--panel-2);color:var(--amber-soft);
+    border:1px dashed var(--line);border-radius:8px;
+    padding:11px;font-size:14px;font-family:var(--body);cursor:pointer;
+    letter-spacing:.02em;min-height:44px;
+  }
+  .add:hover{border-color:var(--amber);color:var(--amber)}
+
+  .opts{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center}
+  label.toggle{display:flex;align-items:center;gap:9px;font-size:13.5px;color:var(--ink-dim);cursor:pointer;user-select:none}
+  label.toggle input{width:auto;min-height:0;height:20px;width:20px;accent-color:var(--amber)}
+
+  /* results */
+  .result{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-left:3px solid var(--amber);
+    border-radius:12px;padding:13px 14px;margin-bottom:11px;
+  }
+  .result.lethal{border-left-color:var(--blood)}
+  .res-top{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:4px}
+  .res-name{font-family:var(--display);font-weight:700;font-size:17px;letter-spacing:.02em}
+  .res-ac{color:var(--ink-faint);font-size:12px;font-weight:400;font-family:var(--body)}
+  .res-dpr{font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
+  .res-dpr b{font-family:var(--display);font-size:21px;color:var(--amber)}
+  .result.lethal .res-dpr b{color:var(--blood)}
+  .res-dpr .u{color:var(--ink-faint);font-size:11.5px;margin-left:3px}
+
+  .bar{height:6px;border-radius:4px;background:#241a12;overflow:hidden;margin:7px 0 9px}
+  .bar > i{display:block;height:100%;background:linear-gradient(90deg,var(--amber),var(--blood))}
+
+  .drop{font-size:12.5px;color:var(--ink-dim);margin-bottom:9px}
+  .drop b{color:var(--ink)}
+  .drop.soon b{color:var(--blood)}
+
+  .breakdown{display:flex;flex-direction:column;gap:7px}
+  .bd{display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:center;font-size:13px}
+  .bd-name{color:var(--ink-dim);min-width:0}
+  .bd-name b{color:var(--ink);font-weight:600}
+  .bd-name .pct{color:var(--ink-faint);font-size:11.5px;display:block}
+  .bd-sub{color:var(--ink-faint);font-variant-numeric:tabular-nums;font-size:12px;text-align:right;white-space:nowrap}
+
+  .stepper{display:flex;align-items:center;gap:0;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+  .stepper button{
+    background:var(--panel-2);color:var(--ink);border:none;
+    width:38px;height:38px;font-size:19px;line-height:1;cursor:pointer;font-family:var(--body);
+  }
+  .stepper button:active{background:var(--line)}
+  .stepper .ct{min-width:34px;text-align:center;font-variant-numeric:tabular-nums;font-size:15px;padding:0 2px}
+  .stepper .ct.zero{color:var(--ink-faint)}
+
+  .empty{color:var(--ink-faint);font-size:13.5px;text-align:center;padding:18px 8px;font-style:italic}
+
+  footer{color:var(--ink-faint);font-size:11.5px;text-align:center;padding:6px 4px 0;line-height:1.6}
+  footer .reset{background:none;border:none;color:var(--ink-faint);text-decoration:underline;cursor:pointer;font-size:11.5px;font-family:var(--body)}
+  footer .reset:hover{color:var(--blood)}
+
+  @media (prefers-reduced-motion: no-preference){
+    .bar > i{transition:width .25s ease}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <h1><span class="flame">&#9788;</span> Attrition</h1>
+    <div class="tag">Skip the dice when the horde swarms. Enter the attackers and the targets, and read off the average damage each crawler soaks per round.</div>
+  </header>
+
+  <!-- MONSTERS -->
+  <section class="panel">
+    <h2>The Horde <span class="hint">to-hit &amp; damage per swing</span></h2>
+    <div class="col-head mon"><span>Monster</span><span>To-Hit</span><span>Avg Dmg</span><span></span></div>
+    <div id="monList"></div>
+    <button class="add" id="addMon">+ Add monster</button>
+  </section>
+
+  <!-- PCS -->
+  <section class="panel">
+    <h2>The Crawlers <span class="hint">AC &middot; HP optional</span></h2>
+    <div class="col-head pc"><span>Name</span><span>AC</span><span>HP</span><span></span></div>
+    <div id="pcList"></div>
+    <button class="add" id="addPc">+ Add crawler</button>
+  </section>
+
+  <!-- RESULTS -->
+  <section class="panel">
+    <h2>Damage per Round <span class="hint">tap &minus;/+ to aim monsters at a target</span></h2>
+    <div id="results"></div>
+  </section>
+
+  <footer>
+    Average = hit chance &times; average damage, summed across every attacker aimed at a target.
+    A nat 20 always lands; everything but a 20 misses on rolls below the target. &nbsp;
+    <button class="reset" id="reset">Clear all</button>
+  </footer>
+
+</div>
+
+<script>
+"use strict";
+
+const STORE = "attrition_v1";
+let uid = 1;
+const nid = () => "i" + (uid++);
+
+let state = {
+  monsters: [],
+  pcs: [],
+  counts: {}             // key `${pcId}|${monId}` -> integer
+};
+
+/* ---------- persistence ---------- */
+function save(){
+  try { localStorage.setItem(STORE, JSON.stringify(state)); } catch(e){}
+}
+function load(){
+  try {
+    const raw = localStorage.getItem(STORE);
+    if(raw){
+      const s = JSON.parse(raw);
+      if(s && Array.isArray(s.monsters) && Array.isArray(s.pcs)){
+        state = Object.assign(state, s);
+        // bump uid past any stored ids
+        const ids = [...state.monsters, ...state.pcs].map(o => parseInt(String(o.id).replace(/\D/g,""),10)).filter(n=>!isNaN(n));
+        uid = (ids.length ? Math.max(...ids) : 0) + 1;
+        return true;
+      }
+    }
+  } catch(e){}
+  return false;
+}
+
+/* ---------- math ---------- */
+// d20 + toHit vs AC. Returns probability in [0,1].
+function hitChance(toHit, ac){
+  const t = ac - toHit;          // the natural roll needed to hit
+  let hits = 0;
+  for(let f=1; f<=20; f++){
+    if(f === 20){ hits++; continue; }   // nat 20 always hits
+    if(f === 1) continue;                // nat 1 always misses
+    if(f >= t) hits++;
+  }
+  return hits / 20;
+}
+// average damage one monster of this type does to this AC per round
+function dprPerAttacker(mon, ac){
+  return hitChance(mon.toHit, ac) * mon.dmg;
+}
+
+/* ---------- helpers ---------- */
+const num = v => { const n = parseFloat(v); return isNaN(n) ? 0 : n; };
+const ck  = (pcId, monId) => pcId + "|" + monId;
+function fmt(x){
+  if(x === 0) return "0";
+  if(x < 10) return x.toFixed(2).replace(/\.?0+$/,"");
+  return x.toFixed(1).replace(/\.0$/,"");
+}
+
+/* ---------- rendering: editors ---------- */
+function renderMonsters(){
+  const host = document.getElementById("monList");
+  host.innerHTML = "";
+  state.monsters.forEach(m=>{
+    const row = document.createElement("div");
+    row.className = "row mon";
+    row.innerHTML = `
+      <input type="text" value="${esc(m.name)}" placeholder="Goblin" aria-label="Monster name">
+      <input type="number" inputmode="numbers-and-punctuation" value="${m.toHit}" placeholder="+2" aria-label="To-hit bonus">
+      <input type="number" inputmode="decimal" value="${m.dmg}" placeholder="5" aria-label="Average damage" min="0" step="0.5">
+      <button class="del" aria-label="Remove monster">&times;</button>`;
+    const [name,th,dm] = row.querySelectorAll("input");
+    name.addEventListener("input", e=>{ m.name = e.target.value; save(); renderResults(); });
+    th.addEventListener("input", e=>{ m.toHit = num(e.target.value); save(); renderResults(); });
+    dm.addEventListener("input", e=>{ m.dmg = num(e.target.value); save(); renderResults(); });
+    row.querySelector(".del").addEventListener("click", ()=>{ removeMon(m.id); });
+    host.appendChild(row);
+  });
+}
+function renderPcs(){
+  const host = document.getElementById("pcList");
+  host.innerHTML = "";
+  state.pcs.forEach(p=>{
+    const row = document.createElement("div");
+    row.className = "row pc";
+    row.innerHTML = `
+      <input type="text" value="${esc(p.name)}" placeholder="Fighter" aria-label="Crawler name">
+      <input type="number" inputmode="numeric" value="${p.ac}" placeholder="15" aria-label="Armor class">
+      <input type="number" inputmode="numeric" value="${p.hp ?? ""}" placeholder="—" aria-label="Hit points (optional)" min="0">
+      <button class="del" aria-label="Remove crawler">&times;</button>`;
+    const [name,ac,hp] = row.querySelectorAll("input");
+    name.addEventListener("input", e=>{ p.name = e.target.value; save(); renderResults(); });
+    ac.addEventListener("input", e=>{ p.ac = num(e.target.value); save(); renderResults(); });
+    hp.addEventListener("input", e=>{ p.hp = e.target.value === "" ? null : num(e.target.value); save(); renderResults(); });
+    row.querySelector(".del").addEventListener("click", ()=>{ removePc(p.id); });
+    host.appendChild(row);
+  });
+}
+
+/* ---------- rendering: results ---------- */
+function renderResults(){
+  const host = document.getElementById("results");
+  host.innerHTML = "";
+
+  if(state.pcs.length === 0){
+    host.innerHTML = `<div class="empty">Add a crawler to see incoming damage.</div>`;
+    return;
+  }
+  const liveMons = state.monsters.filter(m => m.name.trim() !== "" || m.dmg !== 0);
+
+  // compute totals first so the bar can scale to the worst-hit crawler
+  const totals = state.pcs.map(p =>
+    liveMons.reduce((sum,m)=> sum + (state.counts[ck(p.id,m.id)]||0) * dprPerAttacker(m, p.ac), 0)
+  );
+  const worst = Math.max(0.0001, ...totals);
+
+  state.pcs.forEach((p, i)=>{
+    const total = totals[i];
+    const lethal = p.hp != null && total > 0 && p.hp / total <= 3;
+
+    const card = document.createElement("div");
+    card.className = "result" + (lethal ? " lethal" : "");
+
+    const acLabel = `AC ${p.ac||0}` + (p.hp != null ? ` &middot; ${p.hp} HP` : "");
+    let html = `
+      <div class="res-top">
+        <div class="res-name">${esc(p.name)||"Unnamed"} <span class="res-ac">${acLabel}</span></div>
+        <div class="res-dpr"><b>${fmt(total)}</b><span class="u">dmg/rd</span></div>
+      </div>
+      <div class="bar"><i style="width:${Math.min(100,(total/worst)*100)}%"></i></div>`;
+
+    if(p.hp != null && total > 0){
+      const rounds = p.hp / total;
+      const soon = rounds <= 3;
+      html += `<div class="drop${soon?" soon":""}">Drops in &approx; <b>${fmt(rounds)}</b> round${rounds>=2?"s":""} of full focus fire.</div>`;
+    }
+
+    if(liveMons.length === 0){
+      html += `<div class="empty" style="padding:6px 0">Add a monster above.</div>`;
+    } else {
+      html += `<div class="breakdown">`;
+      liveMons.forEach(m=>{
+        const count = state.counts[ck(p.id,m.id)] || 0;
+        const per = dprPerAttacker(m, p.ac);
+        const pct = Math.round(hitChance(m.toHit, p.ac)*100);
+        const sub = count>0 ? `${count} &times; ${fmt(per)} = ${fmt(count*per)}` : `${fmt(per)} each`;
+        html += `
+          <div class="bd" data-mon="${m.id}" data-pc="${p.id}">
+            <div class="bd-name"><b>${esc(m.name)||"Monster"}</b>
+              <span class="pct">${pct}% to hit &middot; ${fmt(m.dmg)} dmg</span>
+            </div>
+            <div class="bd-sub">${sub}</div>
+            <div class="stepper">
+              <button class="minus" aria-label="One fewer">&minus;</button>
+              <span class="ct${count===0?" zero":""}">${count}</span>
+              <button class="plus" aria-label="One more">+</button>
+            </div>
+          </div>`;
+      });
+      html += `</div>`;
+    }
+
+    card.innerHTML = html;
+    card.querySelectorAll(".bd").forEach(bd=>{
+      const key = ck(bd.dataset.pc, bd.dataset.mon);
+      bd.querySelector(".minus").addEventListener("click", ()=> bump(key,-1));
+      bd.querySelector(".plus").addEventListener("click", ()=> bump(key,1));
+    });
+    host.appendChild(card);
+  });
+}
+
+function bump(key, d){
+  const v = Math.max(0, (state.counts[key]||0) + d);
+  state.counts[key] = v;
+  save();
+  renderResults();
+}
+
+/* ---------- mutations ---------- */
+function addMon(){ state.monsters.push({id:nid(), name:"", toHit:2, dmg:5}); save(); renderMonsters(); renderResults(); }
+function addPc(){ state.pcs.push({id:nid(), name:"", ac:13, hp:null}); save(); renderPcs(); renderResults(); }
+function removeMon(id){
+  state.monsters = state.monsters.filter(m=>m.id!==id);
+  Object.keys(state.counts).forEach(k=>{ if(k.endsWith("|"+id)) delete state.counts[k]; });
+  save(); renderMonsters(); renderResults();
+}
+function removePc(id){
+  state.pcs = state.pcs.filter(p=>p.id!==id);
+  Object.keys(state.counts).forEach(k=>{ if(k.startsWith(id+"|")) delete state.counts[k]; });
+  save(); renderPcs(); renderResults();
+}
+
+/* ---------- util ---------- */
+function esc(s){ return String(s??"").replace(/[&<>"]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c])); }
+
+/* ---------- boot ---------- */
+function seed(){
+  state.monsters = [{id:nid(),name:"Goblin",toHit:1,dmg:5}];
+  state.pcs = [
+    {id:nid(),name:"Fighter",ac:15,hp:18},
+    {id:nid(),name:"Wizard",ac:11,hp:8}
+  ];
+}
+document.getElementById("addMon").addEventListener("click", addMon);
+document.getElementById("addPc").addEventListener("click", addPc);
+document.getElementById("reset").addEventListener("click", ()=>{
+  if(confirm("Clear all monsters and crawlers?")){
+    state.counts = {}; seed(); save();
+    renderMonsters(); renderPcs(); renderResults();
+  }
+});
+
+if(!load()) seed();
+renderMonsters(); renderPcs(); renderResults();
+</script>
+</body>
+</html>
